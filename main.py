@@ -16,19 +16,18 @@ import os
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-# 네 텔레그램 유저 ID 넣기
+본인 텔레그램 ID 넣기
 
 ADMINS = [1003909241114]
 
-# 경기 저장
+경기 저장
 
 matches = {}
 
-# 버튼 생성
+버튼 생성 함수
 
 def build_keyboard(match_id, match):
 
-```
 keyboard = [
     [
         InlineKeyboardButton(
@@ -49,20 +48,15 @@ keyboard = [
 ]
 
 return InlineKeyboardMarkup(keyboard)
-```
-
-# 경기 생성
-
-# 사용법:
-
-# /create 맨유|리버풀|30
+경기 생성
+사용법:
+/create 맨유|리버풀|30
 
 async def create_match(
 update: Update,
 context: ContextTypes.DEFAULT_TYPE
 ):
 
-```
 user_id = update.effective_user.id
 
 # 관리자 확인
@@ -112,7 +106,6 @@ try:
     match = matches[match_id]
 
     text_message = f"""
-```
 
 ⚽ {home_team} vs {away_team}
 
@@ -123,7 +116,6 @@ try:
 ⏰ 남은시간 : {close_minutes}분
 """
 
-```
     message = await update.message.reply_text(
         text_message,
         reply_markup=build_keyboard(
@@ -151,16 +143,13 @@ except Exception as e:
     await update.message.reply_text(
         f"오류 발생:\n{e}"
     )
-```
-
-# 투표 처리
+투표 처리
 
 async def button(
 update: Update,
 context: ContextTypes.DEFAULT_TYPE
 ):
 
-```
 query = update.callback_query
 
 await query.answer()
@@ -206,7 +195,6 @@ match["users"][user_id] = choice
 match["votes"][choice] += 1
 
 new_text = f"""
-```
 
 ⚽ {match['home_team']} vs {match['away_team']}
 
@@ -215,7 +203,6 @@ new_text = f"""
 ✈️ 원정승 : {match['votes']['away']}
 """
 
-```
 await query.edit_message_text(
     text=new_text,
     reply_markup=build_keyboard(
@@ -223,9 +210,7 @@ await query.edit_message_text(
         match
     )
 )
-```
-
-# 자동 마감
+자동 마감
 
 async def auto_close_match(
 context,
@@ -233,7 +218,6 @@ match_id,
 minutes
 ):
 
-```
 await asyncio.sleep(minutes * 60)
 
 if match_id not in matches:
@@ -244,7 +228,6 @@ match = matches[match_id]
 match["closed"] = True
 
 close_text = f"""
-```
 
 ⛔ 투표 마감
 
@@ -255,7 +238,6 @@ close_text = f"""
 ✈️ 원정승 : {match['votes']['away']}
 """
 
-```
 await context.bot.edit_message_text(
 
     chat_id=match["chat_id"],
@@ -263,16 +245,13 @@ await context.bot.edit_message_text(
     text=close_text
 
 )
-```
-
-# 경기 목록
+경기 목록
 
 async def matches_command(
 update: Update,
 context: ContextTypes.DEFAULT_TYPE
 ):
 
-```
 if not matches:
 
     await update.message.reply_text(
@@ -299,9 +278,7 @@ for match_id, match in matches.items():
     )
 
 await update.message.reply_text(text)
-```
-
-# 앱 실행
+앱 실행
 
 app = (
 Application
