@@ -1,30 +1,14 @@
-from telegram import (
-InlineKeyboardButton,
-InlineKeyboardMarkup,
-Update
-)
-
-from telegram.ext import (
-Application,
-CommandHandler,
-CallbackQueryHandler,
-ContextTypes
-)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 import asyncio
 import os
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-# 관리자 텔레그램 ID
-
 ADMINS = [1003909241114]
 
-# 경기 저장
-
 matches = {}
-
-# 버튼 생성
 
 def build_keyboard(match_id, match):
 
@@ -49,16 +33,10 @@ keyboard = [
 
 return InlineKeyboardMarkup(keyboard)
 
-# 경기 생성
-
-async def create_match(
-update: Update,
-context: ContextTypes.DEFAULT_TYPE
-):
+async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 user_id = update.effective_user.id
 
-# 관리자 체크
 if user_id not in ADMINS:
 
     await update.message.reply_text(
@@ -69,10 +47,7 @@ if user_id not in ADMINS:
 
 try:
 
-    text = update.message.text.replace(
-        "/create ",
-        ""
-    )
+    text = update.message.text.replace("/create ", "")
 
     split_text = text.split("|")
 
@@ -81,9 +56,7 @@ try:
 
     close_minutes = int(split_text[2])
 
-    match_id = (
-        f"{home_team}_vs_{away_team}"
-    )
+    match_id = f"{home_team}_vs_{away_team}"
 
     matches[match_id] = {
 
@@ -126,13 +99,11 @@ try:
     match["message_id"] = message.message_id
 
     asyncio.create_task(
-
         auto_close_match(
             context,
             match_id,
             close_minutes
         )
-
     )
 
 except Exception as e:
@@ -141,12 +112,7 @@ except Exception as e:
         f"오류 발생:\n{e}"
     )
 
-# 투표 처리
-
-async def button(
-update: Update,
-context: ContextTypes.DEFAULT_TYPE
-):
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 query = update.callback_query
 
@@ -169,7 +135,6 @@ if match_id not in matches:
 
 match = matches[match_id]
 
-# 마감 체크
 if match["closed"]:
 
     await query.answer(
@@ -179,15 +144,12 @@ if match["closed"]:
 
     return
 
-# 기존 투표
 old_choice = match["users"].get(user_id)
 
-# 기존 투표 제거
 if old_choice:
 
     match["votes"][old_choice] -= 1
 
-# 새 투표 저장
 match["users"][user_id] = choice
 
 match["votes"][choice] += 1
@@ -209,13 +171,7 @@ await query.edit_message_text(
     )
 )
 
-# 자동 마감
-
-async def auto_close_match(
-context,
-match_id,
-minutes
-):
+async def auto_close_match(context, match_id, minutes):
 
 await asyncio.sleep(minutes * 60)
 
@@ -238,19 +194,12 @@ close_text = f"""
 """
 
 await context.bot.edit_message_text(
-
     chat_id=match["chat_id"],
     message_id=match["message_id"],
     text=close_text
-
 )
 
-# 경기 목록
-
-async def matches_command(
-update: Update,
-context: ContextTypes.DEFAULT_TYPE
-):
+async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 if not matches:
 
@@ -271,35 +220,20 @@ for match_id, match in matches.items():
     )
 
     text += (
-        f"⚽ {match['home_team']} "
-        f"vs "
-        f"{match['away_team']} "
-        f"- {status}\n"
+        f"⚽ {match['home_team']} vs "
+        f"{match['away_team']} - {status}\n"
     )
 
 await update.message.reply_text(text)
 
-# 앱 실행
+app = Application.builder().token(TOKEN).build()
 
-app = (
-Application
-.builder()
-.token(TOKEN)
-.build()
+app.add_handler(
+CommandHandler("create", create_match)
 )
 
 app.add_handler(
-CommandHandler(
-"create",
-create_match
-)
-)
-
-app.add_handler(
-CommandHandler(
-"matches",
-matches_command
-)
+CommandHandler("matches", matches_command)
 )
 
 app.add_handler(
