@@ -16,15 +16,15 @@ import os
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-본인 텔레그램 ID 넣기
+# 관리자 텔레그램 ID
 
 ADMINS = [1003909241114]
 
-경기 저장
+# 경기 저장
 
 matches = {}
 
-버튼 생성 함수
+# 버튼 생성
 
 def build_keyboard(match_id, match):
 
@@ -48,9 +48,8 @@ keyboard = [
 ]
 
 return InlineKeyboardMarkup(keyboard)
-경기 생성
-사용법:
-/create 맨유|리버풀|30
+
+# 경기 생성
 
 async def create_match(
 update: Update,
@@ -59,7 +58,7 @@ context: ContextTypes.DEFAULT_TYPE
 
 user_id = update.effective_user.id
 
-# 관리자 확인
+# 관리자 체크
 if user_id not in ADMINS:
 
     await update.message.reply_text(
@@ -80,7 +79,6 @@ try:
     home_team = split_text[0].strip()
     away_team = split_text[1].strip()
 
-    # 마감 시간 (분)
     close_minutes = int(split_text[2])
 
     match_id = (
@@ -127,7 +125,6 @@ try:
     match["chat_id"] = message.chat_id
     match["message_id"] = message.message_id
 
-    # 자동 마감 시작
     asyncio.create_task(
 
         auto_close_match(
@@ -143,7 +140,8 @@ except Exception as e:
     await update.message.reply_text(
         f"오류 발생:\n{e}"
     )
-투표 처리
+
+# 투표 처리
 
 async def button(
 update: Update,
@@ -181,7 +179,7 @@ if match["closed"]:
 
     return
 
-# 기존 투표 확인
+# 기존 투표
 old_choice = match["users"].get(user_id)
 
 # 기존 투표 제거
@@ -210,7 +208,8 @@ await query.edit_message_text(
         match
     )
 )
-자동 마감
+
+# 자동 마감
 
 async def auto_close_match(
 context,
@@ -245,7 +244,8 @@ await context.bot.edit_message_text(
     text=close_text
 
 )
-경기 목록
+
+# 경기 목록
 
 async def matches_command(
 update: Update,
@@ -278,7 +278,8 @@ for match_id, match in matches.items():
     )
 
 await update.message.reply_text(text)
-앱 실행
+
+# 앱 실행
 
 app = (
 Application
