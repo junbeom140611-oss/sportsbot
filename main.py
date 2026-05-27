@@ -45,29 +45,49 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     if user_id not in ADMINS:
+
         await update.message.reply_text(
             "관리자만 사용 가능합니다."
         )
+
         return
 
     try:
+
+        if len(context.args) < 3:
+
+            await update.message.reply_text(
+                "사용법:\n/create 홈팀 | 원정팀 | 마감시간(분)"
+            )
+
+            return
 
         text = update.message.text.replace("/create ", "")
 
         split_text = text.split("|")
 
         if len(split_text) != 3:
+
             await update.message.reply_text(
                 "사용법:\n/create 홈팀 | 원정팀 | 마감시간(분)"
             )
+
             return
 
         home_team = split_text[0].strip()
         away_team = split_text[1].strip()
 
-        close_minutes = int(split_text[2])
+        close_minutes = int(split_text[2].strip())
 
         match_id = f"{home_team}_vs_{away_team}"
+
+        if match_id in matches:
+
+            await update.message.reply_text(
+                "이미 등록된 경기입니다."
+            )
+
+            return
 
         matches[match_id] = {
 
@@ -103,7 +123,7 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
 
-        match["chat_id"] = message.chat_id
+        match["chat_id"] = message.chat.id
         match["message_id"] = message.message_id
 
         asyncio.create_task(
@@ -112,6 +132,12 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 match_id,
                 close_minutes
             )
+        )
+
+    except ValueError:
+
+        await update.message.reply_text(
+            "마감시간은 숫자로 입력해주세요."
         )
 
     except Exception as e:
@@ -130,6 +156,9 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     data = query.data.split("|")
+
+    if len(data) != 2:
+        return
 
     match_id = data[0]
     choice = data[1]
@@ -155,7 +184,16 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     old_choice = match["users"].get(user_id)
 
+    if old_choice == choice:
+
+        await query.answer(
+            "이미 선택한 항목입니다."
+        )
+
+        return
+
     if old_choice:
+
         match["votes"][old_choice] -= 1
 
     match["users"][user_id] = choice
@@ -197,11 +235,17 @@ async def auto_close_match(context, match_id, minutes):
         f"✈️ 원정승 : {match['votes']['away']}"
     )
 
-    await context.bot.edit_message_text(
-        chat_id=match["chat_id"],
-        message_id=match["message_id"],
-        text=close_text
-    )
+    try:
+
+        await context.bot.edit_message_text(
+            chat_id=match["chat_id"],
+            message_id=match["message_id"],
+            text=close_text
+        )
+
+    except Exception as e:
+
+        print(f"마감 메시지 수정 오류: {e}")
 
 
 async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -232,20 +276,26 @@ async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
-app = Application.builder().token(TOKEN).build()
+def main():
 
-app.add_handler(
-    CommandHandler("create", create_match)
-)
+    app = Application.builder().token(TOKEN).build()
 
-app.add_handler(
-    CommandHandler("matches", matches_command)
-)
+    app.add_handler(
+        CommandHandler("create", create_match)
+    )
 
-app.add_handler(
-    CallbackQueryHandler(button)
-)
+    app.add_handler(
+        CommandHandler("matches", matches_command)
+    )
 
-print("봇 실행중...")
+    app.add_handler(
+        CallbackQueryHandler(button)
+    )
 
-app.run_polling()
+    print("봇 실행중...")
+
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
