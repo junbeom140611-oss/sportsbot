@@ -1,38 +1,47 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes
-)
+```python id="tcz1zn"
+async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-import os
+    text = update.message.text.replace("/create ", "")
 
-TOKEN = os.getenv("BOT_TOKEN")
+    if "|" not in text:
+        await update.message.reply_text(
+            "사용법:\n/create 팀1|팀2"
+        )
+        return
 
-votes = {
-    "home": 0,
-    "draw": 0,
-    "away": 0
-}
+    split_text = text.split("|")
 
-users = {}
+    home_team = split_text[0]
+    away_team = split_text[1]
 
-async def startvote(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    match_id = f"{home_team}_vs_{away_team}"
+
+    matches[match_id] = {
+        "home_team": home_team,
+        "away_team": away_team,
+        "votes": {
+            "home": 0,
+            "draw": 0,
+            "away": 0
+        },
+        "users": {}
+    }
+
+    match = matches[match_id]
 
     keyboard = [
         [
             InlineKeyboardButton(
-                f"🏠 홈승 ({votes['home']})",
-                callback_data='home'
+                f"🏠 홈승 ({match['votes']['home']})",
+                callback_data=f"{match_id}|home"
             ),
             InlineKeyboardButton(
-                f"🟩 무승부 ({votes['draw']})",
-                callback_data='draw'
+                f"🟩 무승부 ({match['votes']['draw']})",
+                callback_data=f"{match_id}|draw"
             ),
             InlineKeyboardButton(
-                f"✈️ 원정승 ({votes['away']})",
-                callback_data='away'
+                f"✈️ 원정승 ({match['votes']['away']})",
+                callback_data=f"{match_id}|away"
             ),
         ]
     ]
@@ -40,55 +49,7 @@ async def startvote(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "⚽ 경기 투표\n\n👇 아래 버튼으로 참여하세요.",
+        f"⚽ {home_team} vs {away_team}\n\n👇 아래 버튼으로 참여하세요.",
         reply_markup=reply_markup
     )
-
-async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    query = update.callback_query
-    user_id = query.from_user.id
-
-    await query.answer()
-
-    choice = query.data
-
-    if user_id in users:
-        await query.answer("이미 참여하셨습니다.", show_alert=True)
-        return
-
-    users[user_id] = choice
-
-    votes[choice] += 1
-
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                f"🏠 홈승 ({votes['home']})",
-                callback_data='home'
-            ),
-            InlineKeyboardButton(
-                f"🟩 무승부 ({votes['draw']})",
-                callback_data='draw'
-            ),
-            InlineKeyboardButton(
-                f"✈️ 원정승 ({votes['away']})",
-                callback_data='away'
-            ),
-        ]
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await query.edit_message_reply_markup(
-        reply_markup=reply_markup
-    )
-
-app = Application.builder().token(TOKEN).build()
-
-app.add_handler(CommandHandler("startvote", startvote))
-app.add_handler(CallbackQueryHandler(button))
-
-print("봇 실행중...")
-
-app.run_polling()
+```
