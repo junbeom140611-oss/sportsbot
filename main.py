@@ -54,14 +54,6 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
 
-        if len(context.args) < 3:
-
-            await update.message.reply_text(
-                "사용법:\n/create 홈팀 | 원정팀 | 마감시간(분)"
-            )
-
-            return
-
         text = update.message.text.replace("/create ", "")
 
         split_text = text.split("|")
@@ -204,7 +196,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⚽ {match['home_team']} vs {match['away_team']}\n\n"
         f"🏠 홈승 : {match['votes']['home']}\n"
         f"🟩 무승부 : {match['votes']['draw']}\n"
-        f"✈️ 원정승 : {match['votes']['away']}"
+        f"✈️ 원정승 : {match['votes']['away']}\n\n"
+        f"👥 참여 인원 : {len(match['users'])}명"
     )
 
     await query.edit_message_text(
@@ -232,7 +225,8 @@ async def auto_close_match(context, match_id, minutes):
         f"⚽ {match['home_team']} vs {match['away_team']}\n\n"
         f"🏠 홈승 : {match['votes']['home']}\n"
         f"🟩 무승부 : {match['votes']['draw']}\n"
-        f"✈️ 원정승 : {match['votes']['away']}"
+        f"✈️ 원정승 : {match['votes']['away']}\n\n"
+        f"👥 총 참여 인원 : {len(match['users'])}명"
     )
 
     try:
@@ -276,7 +270,7 @@ async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
-def main():
+async def main():
 
     app = Application.builder().token(TOKEN).build()
 
@@ -294,8 +288,13 @@ def main():
 
     print("봇 실행중...")
 
-    app.run_polling()
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+
+    while True:
+        await asyncio.sleep(3600)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
