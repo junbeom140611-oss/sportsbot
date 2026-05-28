@@ -8,34 +8,57 @@ from telegram.ext import (
 
 import asyncio
 import os
+import sys
+import atexit
 
-TOKEN = os.getenv("BOT_TOKEN")
+# ========================
+# 🔥 중복 실행 방지
+# ========================
+def prevent_multiple_instances():
+    lock_file = "bot.lock"
+
+    if os.path.exists(lock_file):
+        print("이미 실행 중인 봇이 있음 → 종료")
+        sys.exit(0)
+
+    with open(lock_file, "w") as f:
+        f.write("running")
+
+    def remove_lock():
+        if os.path.exists(lock_file):
+            os.remove(lock_file)
+
+    atexit.register(remove_lock)
+
+
+# ========================
+# TOKEN
+# ========================
+TOKEN = os.getenv("BOT_TOKEN") or "여기에_토큰입력"
+
+if not TOKEN:
+    raise ValueError("BOT_TOKEN 없음")
 
 ADMINS = [1003909241114]
-
 matches = {}
 
 
+# ========================
+# 키보드
+# ========================
 def build_keyboard(match_id, match):
-    keyboard = [
+    return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton(
-                f"🏠 홈승 ({match['votes']['home']})",
-                callback_data=f"{match_id}|home"
-            ),
-            InlineKeyboardButton(
-                f"🟩 무승부 ({match['votes']['draw']})",
-                callback_data=f"{match_id}|draw"
-            ),
-            InlineKeyboardButton(
-                f"✈️ 원정승 ({match['votes']['away']})",
-                callback_data=f"{match_id}|away"
-            ),
+            InlineKeyboardButton(f"🏠 홈승 ({match['votes']['home']})", callback_data=f"{match_id}|home"),
+            InlineKeyboardButton(f"🟩 무승부 ({match['votes']['draw']})", callback_data=f"{match_id}|draw"),
+            InlineKeyboardButton(f"✈️ 원정승 ({match['votes']['away']})", callback_data=f"{match_id}|away"),
         ]
-    ]
-    return InlineKeyboardMarkup(keyboard)
+    ])
 
 
+# ========================
+# 경기 생성
+# ========================
 async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -48,9 +71,7 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         split_text = text.split("|")
 
         if len(split_text) != 3:
-            await update.message.reply_text(
-                "사용법:\n/create 홈팀 | 원정팀 | 마감시간(분)"
-            )
+            await update.message.reply_text("사용법:\n/create 홈팀 | 원정팀 | 마감시간(분)")
             return
 
         home_team = split_text[0].strip()
@@ -73,23 +94,20 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         match = matches[match_id]
 
-        text_message = (
+        message = await update.message.reply_text(
             f"⚽ {home_team} vs {away_team}\n\n"
             f"🏠 홈승 : 0\n"
             f"🟩 무승부 : 0\n"
             f"✈️ 원정승 : 0\n\n"
-            f"⏰ 남은시간 : {close_minutes}분"
-        )
-
-        message = await update.message.reply_text(
-            text_message,
+            f"⏰ 남은시간 : {close_minutes}분",
             reply_markup=build_keyboard(match_id, match)
         )
 
         match["chat_id"] = message.chat.id
         match["message_id"] = message.message_id
 
-        asyncio.create_task(
+        # 🔥 안정적인 task 실행
+        context.application.create_task(
             auto_close_match(context, match_id, close_minutes)
         )
 
@@ -100,6 +118,9 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"오류 발생:\n{e}")
 
 
+# ========================
+# 버튼 처리
+# ========================
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -134,48 +155,49 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     match["users"][user_id] = choice
     match["votes"][choice] += 1
 
-    new_text = (
+    await query.edit_message_text(
         f"⚽ {match['home_team']} vs {match['away_team']}\n\n"
         f"🏠 홈승 : {match['votes']['home']}\n"
         f"🟩 무승부 : {match['votes']['draw']}\n"
         f"✈️ 원정승 : {match['votes']['away']}\n\n"
-        f"👥 참여 인원 : {len(match['users'])}명"
-    )
-
-    await query.edit_message_text(
-        text=new_text,
+        f"👥 참여 인원 : {len(match['users'])}명",
         reply_markup=build_keyboard(match_id, match)
     )
 
 
+# ========================
+# 자동 마감
+# ========================
 async def auto_close_match(context, match_id, minutes):
-    await asyncio.sleep(minutes * 60)
-
-    if match_id not in matches:
-        return
-
-    match = matches[match_id]
-    match["closed"] = True
-
-    close_text = (
-        f"⛔ 투표 마감\n\n"
-        f"⚽ {match['home_team']} vs {match['away_team']}\n\n"
-        f"🏠 홈승 : {match['votes']['home']}\n"
-        f"🟩 무승부 : {match['votes']['draw']}\n"
-        f"✈️ 원정승 : {match['votes']['away']}\n\n"
-        f"👥 총 참여 인원 : {len(match['users'])}명"
-    )
-
     try:
+        await asyncio.sleep(minutes * 60)
+
+        if match_id not in matches:
+            return
+
+        match = matches[match_id]
+        match["closed"] = True
+
         await context.bot.edit_message_text(
             chat_id=match["chat_id"],
             message_id=match["message_id"],
-            text=close_text
+            text=(
+                f"⛔ 투표 마감\n\n"
+                f"⚽ {match['home_team']} vs {match['away_team']}\n\n"
+                f"🏠 홈승 : {match['votes']['home']}\n"
+                f"🟩 무승부 : {match['votes']['draw']}\n"
+                f"✈️ 원정승 : {match['votes']['away']}\n\n"
+                f"👥 총 참여 인원 : {len(match['users'])}명"
+            )
         )
+
     except Exception as e:
-        print(f"마감 메시지 수정 오류: {e}")
+        print(f"[auto_close 오류] {e}")
 
 
+# ========================
+# 경기 목록
+# ========================
 async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not matches:
         await update.message.reply_text("현재 진행중인 경기가 없습니다.")
@@ -190,16 +212,25 @@ async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
+# ========================
+# 실행
+# ========================
 def main():
+    prevent_multiple_instances()  # 🔥 핵심
+
+    print("봇 실행중...")
+
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("create", create_match))
     app.add_handler(CommandHandler("matches", matches_command))
     app.add_handler(CallbackQueryHandler(button))
 
-    print("봇 실행중...")
-
-    app.run_polling()
+    try:
+        app.run_polling()
+    except KeyboardInterrupt:
+        print("봇 종료")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
