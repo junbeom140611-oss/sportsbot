@@ -12,10 +12,10 @@ import sys
 import atexit
 
 # ========================
-# 🔥 중복 실행 방지
+# 🔥 중복 실행 방지 (Render 대응 개선)
 # ========================
 def prevent_multiple_instances():
-    lock_file = "bot.lock"
+    lock_file = "/tmp/bot.lock"  # 🔥 Render에서는 /tmp 사용 권장
 
     if os.path.exists(lock_file):
         print("이미 실행 중인 봇이 있음 → 종료")
@@ -36,7 +36,7 @@ def prevent_multiple_instances():
 # ========================
 TOKEN = os.getenv("BOT_TOKEN") or "여기에_토큰입력"
 
-if not TOKEN:
+if not TOKEN or TOKEN == "여기에_토큰입력":
     raise ValueError("BOT_TOKEN 없음")
 
 ADMINS = [1003909241114]
@@ -106,6 +106,7 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         match["chat_id"] = message.chat.id
         match["message_id"] = message.message_id
 
+        # 🔥 안정적인 task 실행
         context.application.create_task(
             auto_close_match(context, match_id, close_minutes)
         )
@@ -212,7 +213,7 @@ async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ========================
-# 🚀 실행 (🔥 핵심 수정됨)
+# 🚀 실행 (최종 안정 버전)
 # ========================
 def main():
     prevent_multiple_instances()
@@ -225,14 +226,16 @@ def main():
     app.add_handler(CommandHandler("matches", matches_command))
     app.add_handler(CallbackQueryHandler(button))
 
-    # 🔥 Python 3.14 대응 핵심
+    # 🔥 Python 3.11~3.14 안정 대응
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     try:
-        app.run_polling()
+        app.run_polling(close_loop=False)  # 🔥 중요 (Render 안정화)
     except KeyboardInterrupt:
         print("봇 종료")
+    finally:
+        print("프로세스 종료")
         sys.exit(0)
 
 
