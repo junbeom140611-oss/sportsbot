@@ -39,7 +39,7 @@ if not TOKEN or TOKEN == "여기에_토큰입력":
     raise ValueError("BOT_TOKEN 없음")
 
 # 🔥 수정된 부분
-ADMINS = [8801603894]  # 👉 너 개인 ID
+ADMINS = [8337853027]  # 👉 너 개인 ID
 ALLOWED_CHAT_IDS = [-1001234567890]  # 👉 채널 ID 넣기 (반드시 -100 포함)
 
 matches = {}
