@@ -8,18 +8,17 @@ from telegram.ext import (
 
 import asyncio
 import os
-import sys
 import atexit
 
 # ========================
-# 🔥 중복 실행 방지 (Render 대응 개선)
+# 🔥 중복 실행 방지 (Render/Kuberns 대응)
 # ========================
 def prevent_multiple_instances():
-    lock_file = "/tmp/bot.lock"  # 🔥 Render에서는 /tmp 사용 권장
+    lock_file = "/tmp/bot.lock"
 
     if os.path.exists(lock_file):
-        print("이미 실행 중인 봇이 있음 → 종료")
-        sys.exit(0)
+        print("기존 lock 발견 → 제거 후 계속 실행")
+        os.remove(lock_file)
 
     with open(lock_file, "w") as f:
         f.write("running")
@@ -106,7 +105,6 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         match["chat_id"] = message.chat.id
         match["message_id"] = message.message_id
 
-        # 🔥 안정적인 task 실행
         context.application.create_task(
             auto_close_match(context, match_id, close_minutes)
         )
@@ -226,17 +224,8 @@ def main():
     app.add_handler(CommandHandler("matches", matches_command))
     app.add_handler(CallbackQueryHandler(button))
 
-    # 🔥 Python 3.11~3.14 안정 대응
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    try:
-        app.run_polling(close_loop=False)  # 🔥 중요 (Render 안정화)
-    except KeyboardInterrupt:
-        print("봇 종료")
-    finally:
-        print("프로세스 종료")
-        sys.exit(0)
+    # 🔥 최신 방식 (Python 3.11+ 안정)
+    app.run_polling()
 
 
 if __name__ == "__main__":
