@@ -38,7 +38,10 @@ TOKEN = os.getenv("BOT_TOKEN") or "여기에_토큰입력"
 if not TOKEN or TOKEN == "여기에_토큰입력":
     raise ValueError("BOT_TOKEN 없음")
 
-ADMINS = [1003909241114]
+# 🔥 수정된 부분
+ADMINS = [8801603894]  # 👉 너 개인 ID
+ALLOWED_CHAT_IDS = [-1001234567890]  # 👉 채널 ID 넣기 (반드시 -100 포함)
+
 matches = {}
 
 
@@ -59,14 +62,19 @@ def build_keyboard(match_id, match):
 # 경기 생성
 # ========================
 async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+    user = update.effective_user
+    chat = update.effective_chat
 
-    if user_id not in ADMINS:
+    user_id = user.id if user else None
+    chat_id = chat.id
+
+    # 🔥 채널 + 관리자 체크
+    if user_id not in ADMINS and chat_id not in ALLOWED_CHAT_IDS:
         await update.message.reply_text("관리자만 사용 가능합니다.")
         return
 
     try:
-        text = update.message.text.replace("/create ", "")
+        text = update.message.text.replace("/create", "").strip()
         split_text = text.split("|")
 
         if len(split_text) != 3:
@@ -211,7 +219,7 @@ async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ========================
-# 🚀 실행 (최종 안정 버전)
+# 🚀 실행
 # ========================
 def main():
     prevent_multiple_instances()
@@ -224,7 +232,6 @@ def main():
     app.add_handler(CommandHandler("matches", matches_command))
     app.add_handler(CallbackQueryHandler(button))
 
-    # 🔥 최신 방식 (Python 3.11+ 안정)
     app.run_polling()
 
 
