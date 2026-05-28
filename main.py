@@ -106,7 +106,6 @@ async def create_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
         match["chat_id"] = message.chat.id
         match["message_id"] = message.message_id
 
-        # 🔥 안정적인 task 실행
         context.application.create_task(
             auto_close_match(context, match_id, close_minutes)
         )
@@ -213,10 +212,10 @@ async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ========================
-# 실행
+# 🚀 실행 (🔥 핵심 수정됨)
 # ========================
 def main():
-    prevent_multiple_instances()  # 🔥 핵심
+    prevent_multiple_instances()
 
     print("봇 실행중...")
 
@@ -225,6 +224,10 @@ def main():
     app.add_handler(CommandHandler("create", create_match))
     app.add_handler(CommandHandler("matches", matches_command))
     app.add_handler(CallbackQueryHandler(button))
+
+    # 🔥 Python 3.14 대응 핵심
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     try:
         app.run_polling()
